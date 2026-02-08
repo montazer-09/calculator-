@@ -1,0 +1,40 @@
+name: Build APK from HTML
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install Capacitor CLI
+        run: npm install -g @capacitor/cli
+
+      - name: Initialize Capacitor project
+        run: |
+          npx cap init MyCalculatorApp com.example.calculator
+          npx cap add android
+          mkdir -p android/app/src/main/assets/public
+          cp index.html android/app/src/main/assets/public/
+
+      - name: Build APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
