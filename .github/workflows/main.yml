@@ -1,4 +1,4 @@
-name: OMNI-OS PRO - Final Stable Build
+name: OMNI-OS PRO - Java 21 Ad-Ready
 
 on:
   push:
@@ -17,13 +17,13 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup Java JDK 17 # إصدار 17 هو الأكثر استقراراً للأندرويد حالياً
+      - name: Setup Java JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
-      - name: Prepare Web Assets
+      - name: Prepare Assets
         run: |
           mkdir -p www
           cp index.html www/
@@ -39,28 +39,31 @@ jobs:
           npx cap init "OMNI-OS PRO" "com.omni.pro.app" --web-dir www
           npx cap add android
 
-      - name: Fix Java Version Mismatch
+      - name: Absolute Java 21 Configuration
         run: |
-          # إجبار Gradle على استخدام Java 17 بدلاً من 21 المتسبب في الخطأ
-          echo "org.gradle.java.home=${JAVA_HOME_17_X64}" >> android/gradle.properties
+          # 1. ضبط الخصائص لإجبار استخدام Java 21
+          echo "org.gradle.java.home=${JAVA_HOME_21_X64}" >> android/gradle.properties
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
           
-          # تعديل ملفات البناء لتتوافق مع Java 17
-          sed -i 's/sourceCompatibility JavaVersion.VERSION_1_8/sourceCompatibility JavaVersion.VERSION_17/g' android/app/build.gradle
-          sed -i 's/targetCompatibility JavaVersion.VERSION_1_8/targetCompatibility JavaVersion.VERSION_17/g' android/app/build.gradle
+          # 2. تحديث ملف البناء ليتوافق مع Java 21 (مهم جداً للترجمة)
+          sed -i 's/sourceCompatibility JavaVersion.VERSION_1_8/sourceCompatibility JavaVersion.VERSION_21/g' android/app/build.gradle
+          sed -i 's/targetCompatibility JavaVersion.VERSION_1_8/targetCompatibility JavaVersion.VERSION_21/g' android/app/build.gradle
           
-          # إصدارات حديثة من Capacitor قد تضع 21، سنحولها لـ 17 لضمان الاستقرار
-          sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' android/app/build.gradle || true
+          # 3. تحديث ملف Manifest للأذونات (بدون أوامر sed معقدة لتجنب الفشل)
+          # Capacitor 6 يضيف الأذونات الأساسية، وسنعتمد على الضبط التلقائي لضمان الاستقرار
 
-      - name: Sync & Build APK
+      - name: Sync and Compile
         run: |
           npx cap sync android
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          # إجبار Gradle على استخدام Java 21 أثناء التنفيذ
+          ./gradlew assembleDebug -Dorg.gradle.java.home=${JAVA_HOME_21_X64}
 
       - name: Export APK
         uses: actions/upload-artifact@v4
         with:
-          name: OMNI-OS-PRO-Stable
+          name: OMNI-OS-Pro-J21
           path: android/app/build/outputs/apk/debug/app-debug.apk
           
