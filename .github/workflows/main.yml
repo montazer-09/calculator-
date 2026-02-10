@@ -1,40 +1,54 @@
-name: Build APK from HTML
+name: Transform HTML to APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  build-apk:
+  convert:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Environment
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
 
-      - name: Install Capacitor CLI
-        run: npm install -g @capacitor/cli
-
-      - name: Initialize Capacitor project
+      - name: Initialize Project Structure
         run: |
-          npx cap init MyCalculatorApp com.example.calculator
+          # إنشاء مجلد الويب ووضع ملفك بداخله
+          mkdir -p www
+          cp index.html www/
+          
+          # إنشاء ملف package.json افتراضي
+          npm init -y
+          
+          # تثبيت الأدوات اللازمة كـ Dependencies
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Configure Capacitor
+        run: |
+          # إنشاء ملف الإعداد آلياً
+          npx cap init "MyMobileApp" "com.example.myapp" --web-dir www
           npx cap add android
-          mkdir -p android/app/src/main/assets/public
-          cp index.html android/app/src/main/assets/public/
 
-      - name: Build APK
+      - name: Android Build Tools
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Generate APK
         run: |
+          npx cap copy android
           cd android
-          ./gradlew assembleRelease
+          ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Export APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: calculator-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: MyCustomApp
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          
