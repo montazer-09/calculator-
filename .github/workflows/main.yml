@@ -1,4 +1,4 @@
-name: Build OMNI-OS PRO Super Final
+name: OMNI-OS PRO - Secure Build
 
 on:
   push:
@@ -6,56 +6,61 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Source Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js & Java
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          
-      - name: Setup Java
+
+      - name: Setup Java JDK 17 # إصدار أكثر استقراراً لـ Capacitor
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
 
-      - name: Initialize & Install
+      - name: Initialize Web Directory
         run: |
           mkdir -p www
           cp index.html www/
+          # التأكد من عدم وجود ملفات تعطل الجافا سكريبت
+          rm -f www/capacitor.js 
+
+      - name: Install Dependencies
+        run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android capacitor-unity-ads
+
+      - name: Build Android Project
+        run: |
+          # مسح أي بناء قديم لضمان نظافة المشروع
+          rm -rf android
           npx cap init "OMNI-OS PRO" "com.omni.pro.app" --web-dir www
           npx cap add android
 
-      - name: Advanced Android Fixes
+      - name: Apply Safe Android Fixes
         run: |
-          # 1. إضافة الأذونات اللازمة
-          sed -i '/<application/i \    <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>' android/app/src/main/AndroidManifest.xml
-          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
-          
-          # 2. إجبار نظام الأندرويد على قبول مكتبة Unity Ads
+          # تفعيل Jetifier للتوافقية
           echo "android.useAndroidX=true" >> android/gradle.properties
           echo "android.enableJetifier=true" >> android/gradle.properties
           
-          # 3. تعديل ملف build.gradle لإضافة مستودع Unity
-          sed -i '/repositories {/a \        maven { url "https://unity3d.jfrog.io/artifactory/unity-ads-android-master/" }' android/build.gradle
+          # إضافة الأذونات بطريقة يدوية آمنة (append بدلاً من sed المعقد)
+          # سنكتفي بالأذونات الأساسية التي يضيفها Capacitor تلقائياً لتقليل احتمالية الخطأ
 
-      - name: Build APK
+      - name: Final Sync & Compile
         run: |
-          npx cap copy android
           npx cap sync android
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Export APK
         uses: actions/upload-artifact@v4
         with:
-          name: OMNI-OS-Final-Fixed
+          name: OMNI-OS-Final
           path: android/app/build/outputs/apk/debug/app-debug.apk
           
