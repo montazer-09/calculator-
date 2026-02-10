@@ -1,4 +1,4 @@
-name: Build OMNI-OS PRO Final
+name: Build OMNI-OS PRO Final Fixed
 
 on:
   push:
@@ -23,38 +23,29 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: 'gradle'
+          # تم إزالة سطر cache: 'gradle' لحل مشكلة الـ No file matched
 
       - name: Initialize Project & Install Dependencies
         run: |
-          # إنشاء مجلد الويب ونقل ملف HTML
           mkdir -p www
           cp index.html www/
-          
-          # تهيئة المشروع وتثبيت المكتبات الأساسية والإعلانات
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor-community/admob capacitor-unity-ads
-          
-          # تهيئة Capacitor
+          npm install @capacitor/core @capacitor/cli @capacitor/android capacitor-unity-ads
           npx cap init "OMNI-OS PRO" "com.omni.pro.app" --web-dir www
           npx cap add android
 
       - name: Configure Android Permissions & Manifest
         run: |
-          # 1. إضافة إذن المعرف الإعلاني (ضروري لظهور الإعلانات في أندرويد 13+)
+          # إضافة إذن المعرف الإعلاني الضروري
           sed -i '/<application/i \    <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>' android/app/src/main/AndroidManifest.xml
-          
-          # 2. إضافة أذونات الإنترنت والشبكة
+          # إضافة أذونات الإنترنت
           sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
           sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' android/app/src/main/AndroidManifest.xml
 
       - name: Fix Kotlin & Gradle Conflicts
         run: |
-          # تفعيل Jetifier لدعم المكتبات القديمة ومنع التعارض
           echo "android.useAndroidX=true" >> android/gradle.properties
           echo "android.enableJetifier=true" >> android/gradle.properties
-          
-          # حل مشكلة تكرار فئات Kotlin
           sed -i '/dependencies {/a \    constraints {\n        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.0") { because("kotlin-stdlib-jdk7 is now part of kotlin-stdlib") }\n        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.0") { because("kotlin-stdlib-jdk8 is now part of kotlin-stdlib") }\n    }' android/app/build.gradle
 
       - name: Build and Assemble APK
