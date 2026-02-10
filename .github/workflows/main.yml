@@ -1,4 +1,4 @@
-name: OMNI-OS PRO - Production Stable
+name: OMNI-OS PRO - Final Stable Build
 
 on:
   push:
@@ -17,51 +17,50 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup Java JDK 17 (LTS)
+      - name: Setup Java JDK 17 # إصدار 17 هو الأكثر استقراراً للأندرويد حالياً
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Prepare Web Environment
+      - name: Prepare Web Assets
         run: |
           mkdir -p www
           cp index.html www/
-          # حذف أي ملفات جافا سكريبت قديمة تسبب تعارض
-          rm -f www/capacitor.js
 
-      - name: Install Essential Packages
+      - name: Install Dependencies
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android capacitor-unity-ads
 
-      - name: Fresh Android Initialization
+      - name: Initialize Android Project
         run: |
-          # مسح شامل للمجلد القديم لضمان عدم وجود ملفات فاسدة
           rm -rf android
           npx cap init "OMNI-OS PRO" "com.omni.pro.app" --web-dir www
           npx cap add android
 
-      - name: Configure Java Compatibility
+      - name: Fix Java Version Mismatch
         run: |
-          # تعديل إعدادات Gradle لضمان التوافق مع Java 17
-          echo "android.useAndroidX=true" >> android/gradle.properties
-          echo "android.enableJetifier=true" >> android/gradle.properties
+          # إجبار Gradle على استخدام Java 17 بدلاً من 21 المتسبب في الخطأ
+          echo "org.gradle.java.home=${JAVA_HOME_17_X64}" >> android/gradle.properties
           
-          # إجبار المشروع على استخدام Java 17 في ملف build.gradle
+          # تعديل ملفات البناء لتتوافق مع Java 17
           sed -i 's/sourceCompatibility JavaVersion.VERSION_1_8/sourceCompatibility JavaVersion.VERSION_17/g' android/app/build.gradle
           sed -i 's/targetCompatibility JavaVersion.VERSION_1_8/targetCompatibility JavaVersion.VERSION_17/g' android/app/build.gradle
+          
+          # إصدارات حديثة من Capacitor قد تضع 21، سنحولها لـ 17 لضمان الاستقرار
+          sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' android/app/build.gradle || true
 
-      - name: Synchronize and Build
+      - name: Sync & Build APK
         run: |
           npx cap sync android
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Export Verified APK
+      - name: Export APK
         uses: actions/upload-artifact@v4
         with:
-          name: OMNI-OS-Pro-Build
+          name: OMNI-OS-PRO-Stable
           path: android/app/build/outputs/apk/debug/app-debug.apk
           
